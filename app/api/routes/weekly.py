@@ -1,10 +1,15 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List, Optional
 import json
 from app.core.database import get_db
+from app.core.security import require_readonly_user
 from app.models.schemas import WeeklyEventResponse
 
-router = APIRouter(prefix="/weekly", tags=["GTA Online Weekly Events"])
+router = APIRouter(
+    prefix="/weekly",
+    tags=["GTA Online Weekly Events"],
+    dependencies=[Depends(require_readonly_user)]
+)
 
 
 def row_to_weekly(row) -> WeeklyEventResponse:
@@ -72,7 +77,7 @@ async def get_current_weekly_event():
 
 
 @router.get("/history", response_model=List[WeeklyEventResponse])
-async def get_weekly_event_history(limit: int = Query(10, ge=1, le=50)):
+async def get_weekly_event_history(limit: int = Query(default=10, ge=1, le=50)):
     """Returns past GTA Online weekly updates."""
     async with get_db() as conn:
         cursor = await conn.execute("""

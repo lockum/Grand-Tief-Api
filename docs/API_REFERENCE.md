@@ -1,192 +1,92 @@
 # API Reference Specification
 
-Base URL: `http://localhost:8000` or your production domain.  
-All news and event endpoints are mounted under `/api/v1`.
+Base URL: `http://localhost:8000`  
+All operational data endpoints are mounted under `/api/v1`.
 
-Interactive Swagger UI: `/docs`  
-ReDoc UI: `/redoc`
+Interactive Swagger UI: `http://localhost:8000/docs`  
+ReDoc UI: `http://localhost:8000/redoc`
 
 ---
 
-## 1. System Endpoints
+## Authentication (HTTP Basic Auth)
 
-### `GET /`
-Returns the operational status and list of available top-level resource links.
+All data endpoints require **HTTP Basic Authentication**. You can authenticate requests via the standard `Authorization: Basic <base64>` header, `curl -u`, or using HTTP client libraries.
 
-#### Response `200 OK`
-```json
-{
-  "service": "ViceWire API",
-  "status": "online",
-  "version": "1.0.0",
-  "docs_url": "/docs",
-  "endpoints": {
-    "all_news": "/api/v1/news",
-    "gta6_news": "/api/v1/news/gta6",
-    "online_news": "/api/v1/news/online",
-    "current_weekly_event": "/api/v1/weekly/current",
-    "sync_status": "/api/v1/sync/status",
-    "health": "/health"
-  }
-}
+### Configured User Roles
+| Role | Default Username | Default Password | Permissions |
+| :--- | :--- | :--- | :--- |
+| **Read-Only** | `reader` | `vicewire_read_2026` | Access all news, searches, and weekly event data (`/api/v1/news`, `/api/v1/weekly`, `/api/v1/sync/status`). Used by Telegram bots, frontends, and external consumers. |
+| **Admin** | `admin` | `vicewire_admin_2026` | Full access, including triggering manual synchronization (`POST /api/v1/sync`). |
+
+*Credentials can be configured via environment variables in `.env` (`API_READONLY_USERNAME`, `API_READONLY_PASSWORD`, `API_ADMIN_USERNAME`, `API_ADMIN_PASSWORD`).*
+
+---
+
+## Testing Calls with cURL
+
+```bash
+# 1. Test public health check (No auth required)
+curl -i http://localhost:8000/health
+
+# 2. Get latest GTA 6 news (Read-Only user)
+curl -i -u reader:vicewire_read_2026 http://localhost:8000/api/v1/news/gta6
+
+# 3. Get active GTA Online weekly bonuses
+curl -i -u reader:vicewire_read_2026 http://localhost:8000/api/v1/weekly/current
+
+# 4. Trigger manual news sync (Admin only)
+curl -i -X POST -u admin:vicewire_admin_2026 http://localhost:8000/api/v1/sync
 ```
 
 ---
 
-### `GET /health`
-Liveness and readiness health probe used by Docker, Kubernetes, and reverse proxies.
+## Python Consumer Example (For Telegram Bot)
 
-#### Response `200 OK`
-```json
-{
-  "status": "healthy",
-  "database": "connected",
-  "scheduler_running": true
-}
+```python
+import httpx
+
+API_BASE_URL = "http://localhost:8000/api/v1"
+AUTH = ("reader", "vicewire_read_2026")
+
+async def get_gta6_news():
+    async with httpx.AsyncClient(base_url=API_BASE_URL, auth=AUTH) as client:
+        resp = await client.get("/news/gta6", params={"limit": 5})
+        resp.raise_for_status()
+        return resp.json()["results"]
+
+async def get_weekly_event():
+    async with httpx.AsyncClient(base_url=API_BASE_URL, auth=AUTH) as client:
+        resp = await client.get("/weekly/current")
+        resp.raise_for_status()
+        return resp.json()
 ```
 
 ---
 
-## 2. News Endpoints
+## Endpoints
 
-### `GET /api/v1/news`
-Fetches a paginated list of news articles with optional category and keyword filtering.
+### 1. System Endpoints
+| Method | Endpoint | Auth | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/` | Public | Service index and sitemap |
+| `GET` | `/health` | Public | Container and database healthcheck probe |
 
-#### Query Parameters
-| Parameter | Type | Required | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `category` | string | No | `null` | Filter by `gta6`, `gta_online`, or `rockstar` |
-| `search` | string | No | `null` | Case-insensitive keyword search in title & summary |
-| `page` | integer | No | `1` | Page number (min: 1) |
-| `limit` | integer | No | `10` | Results per page (min: 1, max: 50) |
+### 2. News Endpoints (Read-Only or Admin)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/news` | All news with pagination (`page`, `limit`), search (`search`), and category filter (`category`) |
+| `GET` | `/api/v1/news/gta6` | Shortcut for GTA 6 announcements & trailers |
+| `GET` | `/api/v1/news/online` | Shortcut for GTA Online updates |
+| `GET` | `/api/v1/news/{article_id}` | Detailed single article view |
 
-#### Response `200 OK`
-```json
-{
-  "total": 21,
-  "page": 1,
-  "limit": 2,
-  "results": [
-    {
-      "id": "89834o94713o21",
-      "title": "Pre-Load Grand Theft Auto VI Now",
-      "slug": "pre-load-grand-theft-auto-vi-now",
-      "url": "https://www.rockstargames.com/newswire/article/89834o94713o21/pre-load-grand-theft-auto-vi-now",
-      "image_url": "https://media-rockstargames-com.akamaized.net/tina-uploads/posts/89834o94713o21/94f09130d07de4a50e3ab971e2b7d8c253b7c706.jpg",
-      "summary": "Pre-loading is now available for everyone who has pre-ordered Grand Theft Auto VI digitally.",
-      "category": "gta6",
-      "tags": ["Grand Theft Auto VI"],
-      "published_at": "11/10/26, 3:00 PM",
-      "is_weekly_event": false,
-      "created_at": "2026-11-15 00:45:34",
-      "notified": false
-    }
-  ]
-}
-```
+### 3. Weekly Events Endpoints (Read-Only or Admin)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/weekly/current` | Active GTA Online event week bonuses & vehicle rewards |
+| `GET` | `/api/v1/weekly/history` | Past event weeks history |
 
----
-
-### `GET /api/v1/news/gta6`
-Convenience shortcut for `GET /api/v1/news?category=gta6`.
-
-#### Query Parameters
-- `page` (int, default: 1)
-- `limit` (int, default: 10, max: 50)
-
----
-
-### `GET /api/v1/news/online`
-Convenience shortcut for `GET /api/v1/news?category=gta_online`.
-
-#### Query Parameters
-- `page` (int, default: 1)
-- `limit` (int, default: 10, max: 50)
-
----
-
-### `GET /api/v1/news/{article_id}`
-Retrieves a single article by its Rockstar hash ID.
-
-#### Path Parameters
-- `article_id` (string, required): e.g. `89834o94713o21`
-
-#### Error Response `404 Not Found`
-```json
-{
-  "detail": "Article not found"
-}
-```
-
----
-
-## 3. Weekly Events Endpoints
-
-### `GET /api/v1/weekly/current`
-Returns the active GTA Online event week bonuses, podium vehicle, and discounts.
-
-#### Response `200 OK`
-```json
-{
-  "id": 1,
-  "article_id": "178a115o743442",
-  "title": "GTA+ Members Can Now Claim a Free Grotti Itali RSX",
-  "url": "https://www.rockstargames.com/newswire/article/178a115o743442/gta-members-can-now-claim-a-free-grotti-itali-rsx",
-  "summary": "Get ahead of the impending holiday rush with a Grotti Itali RSX sports car, free to claim for GTA+ Members from The Vinewood Car Club showroom.",
-  "bonuses": [
-    "2x GTA$ & RP on High-Value Heist Targets",
-    "3x Rewards on Community Series"
-  ],
-  "discounts": [
-    "40% off Mammoth F-160 Raiju",
-    "30% off Grotti Itali RSX"
-  ],
-  "podium_vehicle": "Pegassi Zentorno",
-  "prize_ride": "Annis Elegy RH8",
-  "created_at": "2026-11-15 00:45:34"
-}
-```
-
----
-
-### `GET /api/v1/weekly/history`
-Returns past event weeks with pagination.
-
-#### Query Parameters
-- `limit` (int, default: 10, max: 50)
-
----
-
-## 4. Synchronization Endpoints
-
-### `POST /api/v1/sync`
-Manually triggers an immediate pull from Rockstar Games GraphQL endpoints and stores new/updated articles.
-
-#### Response `200 OK`
-```json
-{
-  "new_articles_count": 0,
-  "updated_articles_count": 21,
-  "message": "Sync successful. Ingested 0 new articles, updated 21.",
-  "synced_at": "2026-11-15T00:52:00.123456Z"
-}
-```
-
----
-
-### `GET /api/v1/sync/status`
-Returns metrics and dataset volume.
-
-#### Response `200 OK`
-```json
-{
-  "status": "healthy",
-  "total_articles": 21,
-  "gta6_articles": 15,
-  "gta_online_articles": 6,
-  "weekly_events_tracked": 3,
-  "latest_article_published_at": "11/10/26, 3:00 PM",
-  "checked_at": "2026-11-15T00:52:00.123456Z"
-}
-```
-
+### 4. Synchronization Endpoints
+| Method | Endpoint | Auth | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/sync` | **Admin Only** | Trigger immediate sync from Rockstar |
+| `GET` | `/api/v1/sync/status` | Read-Only or Admin | View database metrics & totals |

@@ -127,7 +127,9 @@ pytest tests/
 │   ├── models/                  # Pydantic request/response schemas
 │   ├── services/                # Rockstar GraphQL client, enricher, scheduler
 │   └── api/routes/              # News, weekly events, and sync routes
-├── agent/                       # Guidelines & task backlog for AI developers
+├── .agent/                      # Guidelines & task backlog for AI developers
+│   ├── README.md                # Fast orientation & navigation index
+│   ├── instructions.md          # Operational rules for coding agents
 │   ├── ARCHITECTURE_GUIDE.md
 │   ├── CONVENTIONS.md
 │   └── TASKS.md
@@ -147,9 +149,11 @@ pytest tests/
 ## 🤖 For AI Developers & Contributors
 
 If you are using an AI coding agent to extend this repository, direct the agent to read:
-- **`agent/ARCHITECTURE_GUIDE.md`**: Upstream GraphQL patterns and design rationale.
-- **`agent/CONVENTIONS.md`**: Async guidelines and coding standards.
-- **`agent/TASKS.md`**: Prioritized roadmap for upcoming features.
+- **`.agent/README.md`**: Overview & navigation guide for AI agents.
+- **`.agent/instructions.md`**: Operational rules and checklist.
+- **`.agent/ARCHITECTURE_GUIDE.md`**: Upstream GraphQL patterns and design rationale.
+- **`.agent/CONVENTIONS.md`**: Async guidelines and coding standards.
+- **`.agent/TASKS.md`**: Prioritized roadmap for upcoming features.
 
 ---
 

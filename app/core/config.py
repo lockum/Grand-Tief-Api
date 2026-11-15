@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     HOST: str = "0.0.0.0"
 
-    # Database
+    # Database Configuration
     DATABASE_PATH: str = "./gta_news.db"
 
     # Polling & Synchronization (in minutes)
@@ -18,6 +18,15 @@ class Settings(BaseSettings):
     # Rockstar GraphQL Endpoint
     ROCKSTAR_GRAPHQL_URL: str = "https://graph.rockstargames.com/"
     ROCKSTAR_BASE_URL: str = "https://www.rockstargames.com"
+
+    # Security & Authentication (HTTP Basic Auth)
+    # Read-Only User Credentials (used by clients, bots, dashboards)
+    API_READONLY_USERNAME: str = "reader"
+    API_READONLY_PASSWORD: str = "vicewire_read_2026"
+
+    # Admin User Credentials (can trigger manual sync & read)
+    API_ADMIN_USERNAME: str = "admin"
+    API_ADMIN_PASSWORD: str = "vicewire_admin_2026"
 
     model_config = SettingsConfigDict(
         env_file=".env",

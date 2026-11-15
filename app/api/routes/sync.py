@@ -1,15 +1,16 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from datetime import datetime, timezone
 from app.services.synchronizer import sync_all_news
 from app.models.schemas import SyncResult
 from app.core.database import get_db
+from app.core.security import require_readonly_user, require_admin_user
 
 router = APIRouter(prefix="/sync", tags=["Synchronization"])
 
 
-@router.post("", response_model=SyncResult)
+@router.post("", response_model=SyncResult, dependencies=[Depends(require_admin_user)])
 async def trigger_manual_sync():
-    """Manually triggers an immediate pull and sync from official Rockstar feeds."""
+    """Manually triggers an immediate pull and sync from official Rockstar feeds (Admin Only)."""
     new_count, updated_count = await sync_all_news()
     return SyncResult(
         new_articles_count=new_count,
@@ -19,9 +20,9 @@ async def trigger_manual_sync():
     )
 
 
-@router.get("/status")
+@router.get("/status", dependencies=[Depends(require_readonly_user)])
 async def get_sync_status():
-    """Returns database metrics and synchronization health."""
+    """Returns database metrics and synchronization health (Read-Only / Admin)."""
     async with get_db() as conn:
         total_cursor = await conn.execute("SELECT COUNT(*) FROM articles")
         total_articles = (await total_cursor.fetchone())[0]

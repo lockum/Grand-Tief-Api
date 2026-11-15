@@ -1,10 +1,15 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional, List
 import json
 from app.core.database import get_db
+from app.core.security import require_readonly_user
 from app.models.schemas import ArticleResponse, PaginatedArticlesResponse
 
-router = APIRouter(prefix="/news", tags=["News"])
+router = APIRouter(
+    prefix="/news",
+    tags=["News"],
+    dependencies=[Depends(require_readonly_user)]
+)
 
 
 def row_to_article(row) -> ArticleResponse:
@@ -54,11 +59,9 @@ async def get_all_news(
 
         where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
-        # Total count
         count_cursor = await conn.execute(f"SELECT COUNT(*) FROM articles {where_sql}", params)
         total = (await count_cursor.fetchone())[0]
 
-        # Results
         query = f"""
             SELECT * FROM articles
             {where_sql}
