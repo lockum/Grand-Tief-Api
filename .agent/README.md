@@ -37,3 +37,4 @@ Welcome! This directory contains essential context, architectural patterns, codi
    Always use `async with get_db() as conn:`. Never invoke `aiosqlite.connect()` manually without proper closing.
 3. **Respect user roles**:
    Read endpoints must be protected with `require_readonly_user`. Mutating/trigger endpoints must use `require_admin_user`. Public endpoints are strictly `/` and `/health`.
+

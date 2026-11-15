@@ -36,3 +36,4 @@ Before finishing any task, run the test suite:
 ./.venv/bin/pytest tests/
 ```
 All tests must pass with 0 errors and 0 unhandled warnings.
+
